@@ -1,0 +1,627 @@
+
+/* ==============================
+   ARCHIMIND - MAIN DESIGN
+================================ */
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: "Segoe UI", Arial, sans-serif;
+  background: #f5f6fa;
+  color: #20243a;
+}
+
+button,
+input,
+textarea {
+  font: inherit;
+}
+
+.app-container {
+  display: flex;
+  min-height: 100vh;
+  width: 100%;
+  background: #f5f6fa;
+}
+
+/* ==============================
+   SIDEBAR
+================================ */
+
+.sidebar {
+  width: 250px;
+  min-width: 250px;
+  min-height: 100vh;
+  background: #151b2e;
+  color: white;
+  padding: 30px 20px;
+}
+
+.sidebar h2 {
+  font-size: 27px;
+  text-align: center;
+  margin-bottom: 8px;
+  color: white;
+}
+
+.sidebar > p {
+  text-align: center;
+  color: #b8bfd2;
+  font-size: 13px;
+  margin-bottom: 35px;
+  line-height: 1.5;
+}
+
+.sidebar nav {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.sidebar nav button {
+  background: transparent;
+  color: #dce1f0;
+  border: none;
+  border-radius: 8px;
+  padding: 13px 12px;
+  text-align: left;
+  cursor: pointer;
+  font-size: 14px;
+  transition: 0.2s;
+}
+
+.sidebar nav button:hover {
+  background: #303957;
+  color: white;
+}
+
+/* ==============================
+   MAIN CONTENT
+================================ */
+
+.main-content {
+  flex: 1;
+  min-width: 0;
+  padding: 40px;
+  overflow-x: hidden;
+}
+
+.main-content > h1 {
+  font-size: 32px;
+  color: #20243a;
+  margin-bottom: 10px;
+}
+
+.main-content > p {
+  color: #777f91;
+  margin-bottom: 30px;
+  font-size: 15px;
+}
+
+.main-content section {
+  margin-bottom: 35px;
+}
+
+.main-content section h2 {
+  font-size: 21px;
+  margin-bottom: 18px;
+  color: #20243a;
+}
+
+/* ==============================
+   PROJECT FORM
+================================ */
+
+.project-form {
+  background: white;
+  padding: 25px;
+  border-radius: 12px;
+  box-shadow: 0 3px 15px rgba(20, 30, 60, 0.06);
+  max-width: 850px;
+}
+
+.project-form input,
+.project-form textarea {
+  display: block;
+  width: 100%;
+  padding: 13px 15px;
+  margin-bottom: 15px;
+  border: 1px solid #dce0ea;
+  border-radius: 8px;
+  background: white;
+  color: #20243a;
+  outline: none;
+}
+
+.project-form input:focus,
+.project-form textarea:focus {
+  border-color: #5148dc;
+}
+
+.project-form textarea {
+  min-height: 110px;
+  resize: vertical;
+}
+
+/* ==============================
+   BUTTONS
+================================ */
+
+.primary-btn {
+  background: #5148dc;
+  color: white;
+  padding: 12px 22px;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: 0.2s;
+}
+
+.primary-btn:hover {
+  background: #3930b5;
+}
+
+.back-btn {
+  background: #ecebff;
+  color: #5148dc;
+  border: none;
+  padding: 10px 16px;
+  border-radius: 7px;
+  cursor: pointer;
+  margin-bottom: 20px;
+}
+
+/* ==============================
+   MODULE CARDS
+================================ */
+
+.module-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 20px;
+}
+
+.module-card {
+  background: white;
+  border: 1px solid #e8eaf1;
+  padding: 23px;
+  border-radius: 12px;
+  text-align: left;
+  cursor: pointer;
+  transition: 0.2s;
+  color: #20243a;
+}
+
+.module-card:hover {
+  transform: translateY(-3px);
+  border-color: #5148dc;
+  box-shadow: 0 5px 18px rgba(40, 40, 100, 0.08);
+}
+
+.module-card h3 {
+  color: #353078;
+  font-size: 17px;
+  margin-bottom: 10px;
+}
+
+.module-card p {
+  color: #777f91;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+/* ==============================
+   PROJECT CARDS
+================================ */
+
+.project-card {
+  display: block;
+  width: 100%;
+  max-width: 850px;
+  background: white;
+  border: 1px solid #e8eaf1;
+  border-radius: 10px;
+  padding: 20px;
+  margin-bottom: 12px;
+  text-align: left;
+  cursor: pointer;
+  color: #20243a;
+}
+
+.project-card strong {
+  font-size: 17px;
+}
+
+.project-card p {
+  color: #777f91;
+  margin: 8px 0;
+  line-height: 1.5;
+}
+
+.project-card span {
+  color: #5148dc;
+  font-weight: 600;
+  font-size: 13px;
+}
+
+/* ==============================
+   WORKSPACE
+================================ */
+
+.workspace {
+  background: white;
+  border-radius: 12px;
+  padding: 28px;
+  box-shadow: 0 3px 15px rgba(20, 30, 60, 0.05);
+  width: 100%;
+  min-width: 0;
+}
+
+.workspace > h2 {
+  margin-bottom: 10px;
+  color: #20243a;
+}
+
+.workspace > p {
+  color: #777f91;
+  margin-bottom: 20px;
+  line-height: 1.6;
+}
+
+/* ==============================
+   MODULE TABS
+================================ */
+
+.module-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 20px 0;
+}
+
+.module-tabs button {
+  background: #f0f1f7;
+  color: #444b60;
+  border: none;
+  border-radius: 7px;
+  padding: 11px 15px;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.module-tabs button:hover,
+.module-tabs button.active-tab {
+  background: #5148dc;
+  color: white;
+}
+
+/* ==============================
+   MODULE OUTPUT
+================================ */
+
+.module-output {
+  background: #fafaff;
+  border: 1px solid #e8e8f3;
+  padding: 25px;
+  border-radius: 10px;
+  margin-top: 20px;
+  line-height: 1.8;
+}
+
+.module-output h3 {
+  color: #29245f;
+  margin-bottom: 15px;
+}
+
+.module-output h4 {
+  margin: 20px 0 8px;
+  color: #353078;
+}
+
+.module-output p,
+.module-output li {
+  color: #535a6e;
+}
+
+.module-output ol,
+.module-output ul {
+  padding-left: 25px;
+}
+
+.module-output .primary-btn {
+  margin-top: 20px;
+}
+
+/* ==============================
+   UML DIAGRAM CONTAINER
+================================ */
+
+.diagram-container {
+  background: white;
+  padding: 22px;
+  margin: 25px 0;
+  border-radius: 12px;
+  border: 1px solid #e4e5ee;
+
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+.diagram-container h3 {
+  color: #29245f;
+  margin-bottom: 10px;
+}
+
+.diagram-container > p {
+  color: #666;
+  margin-bottom: 20px;
+}
+
+/* IMPORTANT: UML SVG FIX */
+
+.diagram-container svg {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  min-width: 650px;
+  height: auto;
+  margin: 0 auto;
+  overflow: visible;
+}
+
+/* ==============================
+   UML LEGEND
+================================ */
+
+.diagram-legend {
+  display: flex;
+  gap: 25px;
+  flex-wrap: wrap;
+  margin-top: 15px;
+  color: #555;
+  font-size: 13px;
+}
+
+/* ==============================
+   CLASS DIAGRAM
+================================ */
+
+.class-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 15px;
+  margin-top: 20px;
+}
+
+.class-card {
+  border: 1px solid #5148dc;
+  border-radius: 8px;
+  overflow: hidden;
+  background: white;
+}
+
+.class-card h4 {
+  background: #5148dc;
+  color: white;
+  padding: 12px;
+  margin: 0;
+  text-align: center;
+}
+
+.class-card p {
+  padding: 7px 12px;
+  margin: 0;
+  border-bottom: 1px solid #eee;
+  font-size: 14px;
+}
+
+.diagram-note {
+  margin-top: 20px;
+}
+
+/* ==============================
+   SEQUENCE DIAGRAM
+================================ */
+
+.sequence-list {
+  max-width: 600px;
+  margin: 20px auto;
+}
+
+.sequence-step {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  padding: 15px;
+  border-bottom: 1px solid #eee;
+}
+
+.sequence-number {
+  background: #5148dc;
+  color: white;
+  border-radius: 50%;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.sequence-step p {
+  margin: 5px 0 0;
+  color: #666;
+}
+
+/* ==============================
+   TRACEABILITY AND TEST CASES
+================================ */
+
+.trace-row,
+.test-case {
+  background: white;
+  border: 1px solid #e8eaf1;
+  padding: 15px;
+  border-radius: 8px;
+  margin: 10px 0;
+}
+
+.test-case strong {
+  color: #5148dc;
+}
+
+/* ==============================
+   ARCHITECTURE
+================================ */
+
+.architecture-flow {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  margin: 25px 0;
+}
+
+.architecture-flow div {
+  background: #ecebff;
+  border: 1px solid #5148dc;
+  color: #29245f;
+  padding: 15px 35px;
+  border-radius: 8px;
+  font-weight: 600;
+  text-align: center;
+}
+
+.architecture-flow span {
+  color: #5148dc;
+  font-size: 22px;
+}
+
+/* ==============================
+   RESPONSIVE DESIGN
+================================ */
+
+@media (max-width: 800px) {
+  .app-container {
+    flex-direction: column;
+  }
+
+  .sidebar {
+    width: 100%;
+    min-width: 0;
+    min-height: auto;
+  }
+
+  .sidebar nav {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .main-content {
+    padding: 22px;
+  }
+}
+
+@media (max-width: 480px) {
+  .main-content {
+    padding: 15px;
+  }
+
+  .sidebar nav {
+    grid-template-columns: 1fr;
+  }
+
+  .workspace {
+    padding: 15px;
+  }
+}
+.diagram-container svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+
+.diagram-container {
+  overflow-x: auto;
+}
+
+.diagram-container {
+  overflow-x: auto;
+}
+
+.diagram-container svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+
+.diagram-container .primary-btn {
+  margin: 12px 0 20px;
+  padding: 11px 18px;
+  background: #5148dc;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.diagram-container .primary-btn:hover {
+  background: #3930b5;
+}
+/* PROJECT ACTION BUTTON FIX */
+
+.project-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin-top: 18px;
+}
+
+.project-actions button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: auto;
+  min-width: 90px;
+  min-height: 42px;
+  padding: 10px 18px;
+  margin: 0;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.project-actions .primary-btn {
+  background: #5148dc;
+  color: white;
+}
+
+.project-actions .secondary-btn {
+  background: #e8eaf0;
+  color: #252b3b;
+}
+
+.project-actions .danger-btn {
+  background: #dc3545;
+  color: white;
+}
+
+.project-actions button:hover {
+  opacity: 0.85;
+}

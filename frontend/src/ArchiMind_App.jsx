@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
+import { supabase } from "./supabaseClient";
 import "./App.css";
-
-const API_URL = (import.meta.env.VITE_API_URL || "http://127.0.0.1:8000").replace(/\/$/, "");
 
 /* =====================================
    PROJECT CONFIGURATIONS
@@ -587,80 +586,107 @@ const modules = [
 ===================================== */
 
 function App() {
+  const [session, setSession] = useState(null);
+  const [authLoading, setAuthLoading] = useState(true);
+  const [authMode, setAuthMode] = useState("login");
+  const [authEmail, setAuthEmail] = useState("");
+  const [authPassword, setAuthPassword] = useState("");
+  const [authMessage, setAuthMessage] = useState("");
+  const [authError, setAuthError] = useState("");
+  const [authBusy, setAuthBusy] = useState(false);
+
   const [projectName, setProjectName] = useState("");
   const [projectDescription, setProjectDescription] = useState("");
   const [apiStatus, setApiStatus] = useState("connecting");
   const [editingProjectId, setEditingProjectId] = useState(null);
   const [editProjectName, setEditProjectName] = useState("");
   const [editProjectDescription, setEditProjectDescription] = useState("");
-
-  // Restore all previously saved projects when ArchiMind opens.
-  const [projects, setProjects] = useState(() => {
-    try {
-      const saved = localStorage.getItem("archimind_projects");
-      return saved ? JSON.parse(saved) : [];
-    } catch (error) {
-      console.error("Could not load saved projects:", error);
-      return [];
-    }
-  });
-
-  // Restore the last opened project and module.
-  const [selectedProjectId, setSelectedProjectId] = useState(() => {
-    try {
-      const saved = localStorage.getItem("archimind_selected_project");
-      return saved ? Number(saved) : null;
-    } catch {
-      return null;
-    }
-  });
-
-  const [activeModule, setActiveModule] = useState(() => {
-    try {
-      return localStorage.getItem("archimind_active_module") || "uml";
-    } catch {
-      return "uml";
-    }
-  });
-
-  // Editable module notes are loaded from FastAPI and stored in SQLite.
+  const [projects, setProjects] = useState([]);
+  const [selectedProjectId, setSelectedProjectId] = useState(null);
+  const [activeModule, setActiveModule] = useState("uml");
   const [moduleContent, setModuleContent] = useState("");
   const [moduleLoadStatus, setModuleLoadStatus] = useState("idle");
   const [moduleSaveStatus, setModuleSaveStatus] = useState("");
 
   const selectedProject =
-    projects.find((project) => project.id === selectedProjectId) || null;
+    projects.find((project) => String(project.id) === String(selectedProjectId)) || null;
 
-  // Save project list automatically after every change.
+  // Restore the current signed-in Supabase session and listen for login/logout changes.
   useEffect(() => {
-    try {
-      localStorage.setItem("archimind_projects", JSON.stringify(projects));
-    } catch (error) {
-      console.error("Could not save ArchiMind projects:", error);
+    let active = true;
+
+    supabase.auth.getSession().then(({ data, error }) => {
+      if (!active) return;
+      if (error) setAuthError(error.message);
+      setSession(data?.session || null);
+      setAuthLoading(false);
+    });
+
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+      setSession(nextSession);
+      setAuthError("");
+      setAuthMessage("");
+    });
+
+    return () => {
+      active = false;
+      listener.subscription.unsubscribe();
+    };
+  }, []);
+
+  async function handleAuthentication(event) {
+    event.preventDefault();
+    setAuthError("");
+    setAuthMessage("");
+
+    const email = authEmail.trim().toLowerCase();
+    if (!email || !authPassword) {
+      setAuthError("Enter your email address and password.");
+      return;
     }
-  }, [projects]);
+    if (authMode === "signup" && authPassword.length < 8) {
+      setAuthError("Use a password with at least 8 characters.");
+      return;
+    }
 
-  // Remember which project was last open.
-  useEffect(() => {
+    setAuthBusy(true);
     try {
-      if (selectedProjectId === null) {
-        localStorage.removeItem("archimind_selected_project");
+      if (authMode === "signup") {
+        const { data, error } = await supabase.auth.signUp({ email, password: authPassword });
+        if (error) throw error;
+        if (data.session) {
+          setSession(data.session);
+          setAuthMessage("Account created successfully.");
+        } else {
+          setAuthMessage("Account created. Check your email and confirm your address, then log in.");
+          setAuthMode("login");
+          setAuthPassword("");
+        }
       } else {
-        localStorage.setItem("archimind_selected_project", String(selectedProjectId));
+        const { data, error } = await supabase.auth.signInWithPassword({ email, password: authPassword });
+        if (error) throw error;
+        setSession(data.session);
+        setAuthPassword("");
       }
     } catch (error) {
-      console.error("Could not save selected project:", error);
+      setAuthError(error.message || "Authentication failed. Please try again.");
+    } finally {
+      setAuthBusy(false);
     }
-  }, [selectedProjectId]);
+  }
 
-  // Remember the last selected engineering module.
-  useEffect(() => {
-    try {
-      localStorage.setItem("archimind_active_module", activeModule);
-    } catch (error) {
-      console.error("Could not save active module:", error);
+  async function handleLogout() {
+    const { error } = await supabase.auth.signOut();
+    if (error) {
+      setAuthError(error.message);
+      return;
     }
-  }, [activeModule]);
+    setProjects([]);
+    setSelectedProjectId(null);
+    setModuleContent("");
+    setEditingProjectId(null);
+    setAuthMode("login");
+  }
 
   function createDefaultModuleContent(project, moduleKey) {
     const type = detectProjectType(project);
@@ -676,7 +702,7 @@ function App() {
     }
 
     if (moduleKey === "architecture") {
-      return `PROPOSED ARCHITECTURE — ${project.name}\n\nReact Frontend → FastAPI Backend → SQLite Database\n\nThe frontend handles user interaction. FastAPI exposes REST API endpoints. SQLite stores projects and module content. This is the current local implementation architecture.`;
+      return `PROPOSED ARCHITECTURE — ${project.name}\n\nReact Frontend → Supabase Authentication → Supabase PostgreSQL\n\nThe frontend handles user interaction. Supabase Authentication manages user accounts. PostgreSQL stores each user’s projects and module content, protected by Row Level Security.`;
     }
 
     if (moduleKey === "traceability") {
@@ -686,9 +712,9 @@ function App() {
     return requirements.map((item, index) => `TC-${String(index + 1).padStart(2, "0")}\nRequirement: ${item}\nExpected result: The system should complete this action successfully.\nStatus: Not executed`).join("\n\n");
   }
 
-  // Load saved content whenever the user opens a project or changes modules.
+  // Load saved module content from Supabase. RLS restricts access to the signed-in user.
   useEffect(() => {
-    if (!selectedProject) {
+    if (!session || !selectedProject) {
       setModuleContent("");
       setModuleLoadStatus("idle");
       setModuleSaveStatus("");
@@ -696,184 +722,123 @@ function App() {
     }
 
     let cancelled = false;
-    const storageKey = `archimind_module_${selectedProject.id}_${activeModule}`;
-
     async function loadModuleContent() {
       setModuleLoadStatus("loading");
       setModuleSaveStatus("");
+      const { data, error } = await supabase
+        .from("project_data")
+        .select("content")
+        .eq("project_id", selectedProject.id)
+        .eq("module_key", activeModule)
+        .maybeSingle();
 
-      try {
-        const response = await fetch(
-          `${API_URL}/projects/${selectedProject.id}/data/${activeModule}`
-        );
-
-        if (response.ok) {
-          const data = await response.json();
-          const content = typeof data === "string" ? data : (data.content || "");
-
-          if (!cancelled) {
-            setModuleContent(content || createDefaultModuleContent(selectedProject, activeModule));
-            setModuleLoadStatus("loaded");
-          }
-          return;
-        }
-
-        if (response.status !== 404) {
-          throw new Error(`Module load failed (${response.status})`);
-        }
-      } catch (error) {
-        console.warn("Could not load module data from API; checking browser backup.", error);
+      if (cancelled) return;
+      if (error) {
+        console.error("Module load failed:", error);
+        setModuleContent("");
+        setModuleLoadStatus("error");
+        setModuleSaveStatus("Could not load saved module data.");
+        return;
       }
 
-      let savedContent = "";
-
-      try {
-        savedContent = localStorage.getItem(storageKey) || "";
-      } catch (error) {
-        console.warn("Could not read module browser backup.", error);
-      }
-
-      if (!cancelled) {
-        setModuleContent(savedContent || createDefaultModuleContent(selectedProject, activeModule));
-        setModuleLoadStatus("loaded");
-      }
+      setModuleContent(
+        data?.content || createDefaultModuleContent(selectedProject, activeModule)
+      );
+      setModuleLoadStatus("loaded");
     }
 
     loadModuleContent();
     return () => { cancelled = true; };
-  }, [selectedProjectId, activeModule]);
+  }, [session?.user?.id, selectedProjectId, activeModule]);
 
   async function saveCurrentModule() {
-    if (!selectedProject) return;
-
-    const storageKey = `archimind_module_${selectedProject.id}_${activeModule}`;
-
-    try {
-      localStorage.setItem(storageKey, moduleContent);
-    } catch (error) {
-      console.warn("Browser backup could not be saved.", error);
-    }
-
+    if (!selectedProject || !session) return;
     setModuleSaveStatus("Saving...");
 
-    try {
-      const response = await fetch(
-        `${API_URL}/projects/${selectedProject.id}/data/${activeModule}`,
-        {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ content: moduleContent })
-        }
-      );
+    const { error } = await supabase.from("project_data").upsert(
+      {
+        project_id: selectedProject.id,
+        module_key: activeModule,
+        content: moduleContent,
+        updated_at: new Date().toISOString()
+      },
+      { onConflict: "project_id,module_key" }
+    );
 
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.detail || `Save failed (${response.status})`);
-      }
-
-      setModuleSaveStatus("Saved to SQLite successfully.");
-      setApiStatus("connected");
-    } catch (error) {
+    if (error) {
       console.error("Module save failed:", error);
-      setModuleSaveStatus("Saved in this browser only. Check that FastAPI is running.");
+      setModuleSaveStatus(`Save failed: ${error.message}`);
+      return;
     }
+    setModuleSaveStatus("Saved to your ArchiMind account successfully.");
+    setApiStatus("connected");
   }
-    // Connect to FastAPI and migrate projects previously saved in this browser.
+
+  // Fetch only the projects belonging to the signed-in account.
   useEffect(() => {
     let cancelled = false;
-
-    async function connectBackend() {
-      try {
-        const response = await fetch(`${API_URL}/projects`);
-        if (!response.ok) throw new Error("Could not load projects from API.");
-
-        const serverProjects = await response.json();
-        const localProjects = (() => {
-          try {
-            return JSON.parse(localStorage.getItem("archimind_projects") || "[]");
-          } catch {
-            return [];
-          }
-        })();
-
-        const serverIds = new Set(serverProjects.map((item) => Number(item.id)));
-
-        for (const project of localProjects) {
-          if (!serverIds.has(Number(project.id))) {
-            try {
-              await fetch(`${API_URL}/projects`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                  id: Number(project.id),
-                  name: project.name,
-                  description: project.description
-                })
-              });
-            } catch (migrationError) {
-              console.error("Project migration failed:", migrationError);
-            }
-          }
-        }
-
-        const latestResponse = await fetch(`${API_URL}/projects`);
-        if (!latestResponse.ok) throw new Error("Could not refresh database projects.");
-        const latestProjects = await latestResponse.json();
-
-        if (!cancelled) {
-          setProjects(latestProjects.map((item) => ({
-            id: Number(item.id),
-            name: item.name,
-            description: item.description
-          })));
-          setApiStatus("connected");
-        }
-      } catch (error) {
-        console.error("Backend connection failed:", error);
-        if (!cancelled) setApiStatus("offline");
+    async function loadProjects() {
+      if (!session) {
+        setProjects([]);
+        setSelectedProjectId(null);
+        setApiStatus("connecting");
+        return;
       }
+
+      setApiStatus("connecting");
+      const { data, error } = await supabase
+        .from("projects")
+        .select("id, name, description, created_at")
+        .order("created_at", { ascending: false });
+
+      if (cancelled) return;
+      if (error) {
+        console.error("Project load failed:", error);
+        setApiStatus("offline");
+        setAuthError(`Database connection failed: ${error.message}`);
+        return;
+      }
+
+      setProjects((data || []).map((item) => ({
+        id: item.id,
+        name: item.name,
+        description: item.description
+      })));
+      setSelectedProjectId(null);
+      setApiStatus("connected");
     }
 
-    connectBackend();
+    loadProjects();
     return () => { cancelled = true; };
-  }, []);
+  }, [session?.user?.id]);
 
   async function createProject() {
     if (!projectName.trim() || !projectDescription.trim()) {
       alert("Please enter both project name and description.");
       return;
     }
+    if (!session) return;
 
-    const newProject = {
-      id: Date.now(),
-      name: projectName.trim(),
-      description: projectDescription.trim()
-    };
+    const { data, error } = await supabase
+      .from("projects")
+      .insert({
+        user_id: session.user.id,
+        name: projectName.trim(),
+        description: projectDescription.trim()
+      })
+      .select("id, name, description")
+      .single();
 
-    try {
-      const response = await fetch(`${API_URL}/projects`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(newProject)
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.detail || "Database save failed.");
-      }
-
-      setProjects((previous) => [...previous, newProject]);
-      setApiStatus("connected");
-      setProjectName("");
-      setProjectDescription("");
-    } catch (error) {
+    if (error) {
       console.error("Project save failed:", error);
-      setApiStatus("offline");
-      alert(
-        "Could not save to SQLite. Make sure FastAPI is running at " +
-        "http://127.0.0.1:8000, then try again."
-      );
+      alert(`Could not save project: ${error.message}`);
+      return;
     }
+
+    setProjects((previous) => [data, ...previous]);
+    setApiStatus("connected");
+    setProjectName("");
+    setProjectDescription("");
   }
 
   function startEditingProject(project) {
@@ -894,74 +859,48 @@ function App() {
       return;
     }
 
-    try {
-      const response = await fetch(`${API_URL}/projects/${projectId}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          id: Number(projectId),
-          name: editProjectName.trim(),
-          description: editProjectDescription.trim()
-        })
-      });
+    const { data, error } = await supabase
+      .from("projects")
+      .update({
+        name: editProjectName.trim(),
+        description: editProjectDescription.trim()
+      })
+      .eq("id", projectId)
+      .select("id, name, description")
+      .single();
 
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.detail || "Could not update project.");
-      }
-
-      setProjects((previous) => previous.map((project) =>
-        Number(project.id) === Number(projectId)
-          ? {
-              ...project,
-              name: editProjectName.trim(),
-              description: editProjectDescription.trim()
-            }
-          : project
-      ));
-
-      cancelEditingProject();
-      setApiStatus("connected");
-    } catch (error) {
+    if (error) {
       console.error("Project update failed:", error);
-      alert("Could not update the project. Check that the backend is running.");
+      alert(`Could not update project: ${error.message}`);
+      return;
     }
+
+    setProjects((previous) => previous.map((project) =>
+      String(project.id) === String(projectId) ? data : project
+    ));
+    cancelEditingProject();
+    setApiStatus("connected");
   }
 
   async function deleteProject(project) {
     const confirmed = window.confirm(
       `Are you sure you want to delete "${project.name}"? This cannot be undone.`
     );
-
     if (!confirmed) return;
 
-    try {
-      const response = await fetch(`${API_URL}/projects/${project.id}`, {
-        method: "DELETE"
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.detail || "Could not delete project.");
-      }
-
-      setProjects((previous) => previous.filter(
-        (item) => Number(item.id) !== Number(project.id)
-      ));
-
-      if (Number(selectedProjectId) === Number(project.id)) {
-        setSelectedProjectId(null);
-      }
-
-      if (Number(editingProjectId) === Number(project.id)) {
-        cancelEditingProject();
-      }
-
-      setApiStatus("connected");
-    } catch (error) {
+    const { error } = await supabase.from("projects").delete().eq("id", project.id);
+    if (error) {
       console.error("Project deletion failed:", error);
-      alert("Could not delete the project. Check that the backend is running.");
+      alert(`Could not delete project: ${error.message}`);
+      return;
     }
+
+    setProjects((previous) => previous.filter(
+      (item) => String(item.id) !== String(project.id)
+    ));
+    if (String(selectedProjectId) === String(project.id)) setSelectedProjectId(null);
+    if (String(editingProjectId) === String(project.id)) cancelEditingProject();
+    setApiStatus("connected");
   }
 
   function downloadSRS(project, config) {
@@ -1070,10 +1009,10 @@ ${[...config.leftCases, ...config.rightCases].map(item => `<li>${escapeHTML(item
           <h3>Proposed System Architecture</h3>
           <div className="architecture-flow">
             <div>React Frontend</div><span>↓</span>
-            <div>FastAPI Backend</div><span>↓</span>
-            <div>SQLite Database</div>
+            <div>Supabase Authentication & API</div><span>↓</span>
+            <div>PostgreSQL Database (RLS)</div>
           </div>
-          <p>This is a proposed architecture, not a deployed system.</p>
+          <p>Projects and module data are stored in Supabase PostgreSQL and protected by Row Level Security.</p>
         </div>
       );
     }
@@ -1189,6 +1128,42 @@ ${[...config.leftCases, ...config.rightCases].map(item => `<li>${escapeHTML(item
     );
   }
 
+  if (authLoading) {
+    return (
+      <div style={{ minHeight: "100vh", display: "grid", placeItems: "center", background: "#f5f6fb", fontFamily: "Arial, sans-serif" }}>
+        <p>Loading ArchiMind...</p>
+      </div>
+    );
+  }
+
+  if (!session) {
+    return (
+      <div style={{ minHeight: "100vh", display: "grid", placeItems: "center", padding: "24px", background: "#f4f5fb", fontFamily: "Arial, sans-serif" }}>
+        <form onSubmit={handleAuthentication} style={{ width: "100%", maxWidth: "420px", boxSizing: "border-box", background: "#fff", padding: "34px", borderRadius: "16px", boxShadow: "0 12px 40px rgba(25, 25, 70, 0.10)" }}>
+          <h1 style={{ margin: "0 0 8px", color: "#29245f" }}>ArchiMind</h1>
+          <p style={{ margin: "0 0 26px", color: "#666" }}>Software Engineering and System Design Assistant</p>
+          <h2 style={{ margin: "0 0 20px" }}>{authMode === "login" ? "Welcome back" : "Create your account"}</h2>
+          <label style={{ display: "block", marginBottom: "7px", fontWeight: 600 }}>Email address</label>
+          <input type="email" autoComplete="email" value={authEmail} onChange={(event) => setAuthEmail(event.target.value)} placeholder="Enter your email" required style={{ width: "100%", boxSizing: "border-box", padding: "12px", marginBottom: "16px", border: "1px solid #ccc", borderRadius: "8px" }} />
+          <label style={{ display: "block", marginBottom: "7px", fontWeight: 600 }}>Password</label>
+          <input type="password" autoComplete={authMode === "login" ? "current-password" : "new-password"} value={authPassword} onChange={(event) => setAuthPassword(event.target.value)} placeholder={authMode === "signup" ? "At least 8 characters" : "Enter your password"} required style={{ width: "100%", boxSizing: "border-box", padding: "12px", marginBottom: "18px", border: "1px solid #ccc", borderRadius: "8px" }} />
+          {authError && <p role="alert" style={{ color: "#b42318", background: "#fff1f0", padding: "10px", borderRadius: "7px", fontSize: "14px" }}>{authError}</p>}
+          {authMessage && <p role="status" style={{ color: "#16723b", background: "#effaf2", padding: "10px", borderRadius: "7px", fontSize: "14px" }}>{authMessage}</p>}
+          <button type="submit" disabled={authBusy} className="primary-btn" style={{ width: "100%", padding: "12px", marginTop: "4px" }}>
+            {authBusy ? "Please wait..." : authMode === "login" ? "Log In" : "Create Account"}
+          </button>
+          <p style={{ textAlign: "center", margin: "20px 0 0", color: "#555", fontSize: "14px" }}>
+            {authMode === "login" ? "New to ArchiMind? " : "Already have an account? "}
+            <button type="button" onClick={() => { setAuthMode(authMode === "login" ? "signup" : "login"); setAuthError(""); setAuthMessage(""); }} style={{ border: 0, background: "none", color: "#5148dc", cursor: "pointer", fontWeight: 700 }}>
+              {authMode === "login" ? "Create account" : "Log in"}
+            </button>
+          </p>
+          <p style={{ margin: "18px 0 0", color: "#888", fontSize: "12px", textAlign: "center" }}>Your projects are private to your account.</p>
+        </form>
+      </div>
+    );
+  }
+
   return (
     <div className="app-container">
       <aside className="sidebar">
@@ -1206,16 +1181,20 @@ ${[...config.leftCases, ...config.rightCases].map(item => `<li>${escapeHTML(item
       </aside>
 
       <main className="main-content">
+        <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: "12px", flexWrap: "wrap", marginBottom: "12px" }}>
+          <span style={{ color: "#666", fontSize: "13px" }}>{session.user.email}</span>
+          <button className="secondary-btn" onClick={handleLogout}>Log Out</button>
+        </div>
         <h1>Welcome to ArchiMind</h1>
         <p>Your Software Engineering and System Design workspace.</p>
 
         <p className="save-status">
           <span className="save-status-dot"></span>
           {apiStatus === "connected"
-            ? "Database connected — projects are saved to SQLite."
+            ? "Database connected — projects are saved to your account."
             : apiStatus === "connecting"
               ? "Connecting to the project database..."
-              : "Database offline — start the FastAPI backend."}
+              : "Database connection unavailable — check your internet and Supabase settings."}
         </p>
 
         {!selectedProject ? (

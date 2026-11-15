@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 import "./App.css";
 
-const API_URL = "http://127.0.0.1:8000";
+const API_URL = "https://archimind-backend-waf7.onrender.com";
 
 /* =====================================
    PROJECT CONFIGURATIONS
@@ -861,7 +861,7 @@ function App() {
       setApiStatus("offline");
       alert(
         "Could not save to SQLite. Make sure FastAPI is running at " +
-        "http://127.0.0.1:8000, then try again."
+        "https://archimind-backend-waf7.onrender.com, then try again."
       );
     }
   }
